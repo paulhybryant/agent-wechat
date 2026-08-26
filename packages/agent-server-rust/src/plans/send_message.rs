@@ -114,6 +114,14 @@ impl Plan for SendMessagePlan {
             match &plan_state.phase {
                 SendMessagePhase::Opening => {
                     if main_state_id != Some("chat") && main_state_id != Some("chat_open") {
+                        if let Some(weixin_tab) = query_selector(a11y, r#"push-button[name="Weixin"]"#) {
+                            if let Some(bounds) = &weixin_tab.bounds {
+                                return Some(SelectedAction {
+                                    action: actions::click_bounds(bounds),
+                                    frame: identified.main_window.as_ref().and_then(|m| m.frame.clone()),
+                                });
+                            }
+                        }
                         return None;
                     }
 

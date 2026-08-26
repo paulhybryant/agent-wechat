@@ -58,18 +58,12 @@ impl IAState for LoginAccountState {
     fn id(&self) -> &str { "login_account" }
 
     fn identify(&self, args: &IdentifyArgs) -> Result<IdentifyResult, String> {
-        let log_in_btn = query_selector(args.a11y, r#"push-button[name="Log In"]"#)
-            .or_else(|| query_selector(args.a11y, r#"push-button[name="Open WeChat"]"#));
+        let log_in_btn = query_selector(args.a11y, r#"push-button[name=/^(Log In|Open WeChat|Enter Weixin)$/]"#);
         if log_in_btn.is_none() {
             return Ok(IdentifyResult { identified: false, frame: None });
         }
 
-        let has_switch = query_selector(args.a11y, r#"push-button[name="Switch Account"]"#).is_some();
-        if !has_switch {
-            return Ok(IdentifyResult { identified: false, frame: None });
-        }
-
-        Ok(IdentifyResult { identified: true, frame: find_frame_for(args.a11y, r#"push-button[name="Switch Account"]"#) })
+        Ok(IdentifyResult { identified: true, frame: find_frame_for(args.a11y, r#"push-button[name=/^(Log In|Open WeChat|Enter Weixin)$/]"#) })
     }
 
     fn reduce(&self, args: &ReduceArgs) -> AppState {

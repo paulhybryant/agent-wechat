@@ -10,7 +10,7 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 RUST_DIR="$ROOT_DIR/packages/agent-server-rust"
-BUILDER_IMAGE="rust:1.93-bookworm"
+BUILDER_IMAGE="docker.1ms.run/rust:1.93-bookworm"
 CACHE_VOLUME="agent-wechat-cargo-cache"
 
 CONTAINER=""

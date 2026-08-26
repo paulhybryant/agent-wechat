@@ -205,9 +205,15 @@ pub async fn open_chat(
             Json(serde_json::json!({ "ok": true }))
         }
     } else {
+        let mut err_msg = result.error.unwrap_or_else(|| "Chat open failed".to_string());
+        if let Some(open_result) = plan_state.result {
+            if let Some(tool_err) = open_result.error {
+                err_msg = tool_err;
+            }
+        }
         Json(serde_json::json!({
             "ok": false,
-            "error": result.error.unwrap_or_else(|| "Chat open failed".to_string())
+            "error": err_msg
         }))
     }
 }

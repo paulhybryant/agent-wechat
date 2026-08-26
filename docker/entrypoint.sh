@@ -17,6 +17,25 @@ if [ "$(id -u)" -eq 0 ]; then
   mkdir -p /tmp/.X11-unix
   chown root:root /tmp/.X11-unix
   chmod 1777 /tmp/.X11-unix
+
+  # Match wechat user UID/GID to the mounted host directory to fix permission issues
+  if [ -d "$WECHAT_HOME" ]; then
+    TARGET_UID=$(stat -c "%u" "$WECHAT_HOME")
+    TARGET_GID=$(stat -c "%g" "$WECHAT_HOME")
+    if [ "$TARGET_UID" != "0" ] && [ "$TARGET_UID" != "$(id -u wechat)" ]; then
+      echo "Adjusting wechat user UID to $TARGET_UID to match $WECHAT_HOME"
+      usermod -o -u "$TARGET_UID" wechat || true
+    fi
+    if [ "$TARGET_GID" != "0" ] && [ "$TARGET_GID" != "$(id -g wechat)" ]; then
+      echo "Adjusting wechat group GID to $TARGET_GID to match $WECHAT_HOME"
+      groupmod -o -g "$TARGET_GID" wechat || true
+    fi
+    chown -R wechat:wechat "$WECHAT_HOME" || true
+  fi
+  
+  if [ -d "/data" ]; then
+    chown -R wechat:wechat /data 2>/dev/null || true
+  fi
 fi
 
 if [ -f /tmp/.X99-lock ]; then

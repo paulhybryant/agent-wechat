@@ -6,7 +6,7 @@ DOCKER_DIR="$ROOT_DIR/docker"
 DOCKERFILE="$DOCKER_DIR/Dockerfile"
 
 ARCH_ONLY=""
-NO_CACHE=0
+NO_CACHE=""
 BUILD_MODE="release"
 
 while [ "$#" -gt 0 ]; do
@@ -51,20 +51,53 @@ cleanup_build_context() {
   rm -rf "$DOCKER_DIR/agent-server-rust"
 }
 
+# Detect container tool and buildx support
+CONTAINER_TOOL="docker"
+USE_BUILDX=false
+if command -v podman &> /dev/null; then
+  if ! command -v docker &> /dev/null || ! docker info &> /dev/null; then
+    CONTAINER_TOOL="podman"
+  fi
+fi
+
+if [ "$CONTAINER_TOOL" = "docker" ]; then
+  if docker buildx version &> /dev/null; then
+    USE_BUILDX=true
+  fi
+fi
+
 build_arch() {
   local platform="$1"
   local tag="$2"
 
-  echo "==> Building ${tag} (${platform})"
+  echo "==> Building ${tag} (${platform}) using ${CONTAINER_TOOL} (buildx: ${USE_BUILDX})"
   echo "    WeChat .deb will be downloaded inside Docker build"
-  docker buildx build \
-    ${NO_CACHE:+--no-cache} \
-    --platform "$platform" \
-    --build-arg BUILD_MODE="$BUILD_MODE" \
-    -t "$tag" \
-    --load \
-    -f "$DOCKERFILE" \
-    "$DOCKER_DIR"
+  
+  if [ "$CONTAINER_TOOL" = "podman" ]; then
+    podman build \
+      ${NO_CACHE:+--no-cache} \
+      --platform "$platform" \
+      --build-arg BUILD_MODE="$BUILD_MODE" \
+      -t "$tag" \
+      -f "$DOCKERFILE" \
+      "$DOCKER_DIR"
+  elif [ "$USE_BUILDX" = "true" ]; then
+    docker buildx build \
+      ${NO_CACHE:+--no-cache} \
+      --platform "$platform" \
+      --build-arg BUILD_MODE="$BUILD_MODE" \
+      -t "$tag" \
+      --load \
+      -f "$DOCKERFILE" \
+      "$DOCKER_DIR"
+  else
+    docker build \
+      ${NO_CACHE:+--no-cache} \
+      --build-arg BUILD_MODE="$BUILD_MODE" \
+      -t "$tag" \
+      -f "$DOCKERFILE" \
+      "$DOCKER_DIR"
+  fi
 }
 
 # Auto-detect architecture if not specified

@@ -7,9 +7,47 @@ import { resolve, dirname } from 'path';
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-const fontRegular = readFileSync('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-const fontBold = readFileSync('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
-const fontMono = readFileSync('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf');
+const FONT_LOCATIONS = [
+  // Debian / Ubuntu / GitHub Actions
+  {
+    regular: '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    bold: '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    mono: '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
+  },
+  // RedHat / CentOS / Fedora / Alpine
+  {
+    regular: '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
+    bold: '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf',
+    mono: '/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf',
+  },
+  {
+    regular: '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+    bold: '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+    mono: '/usr/share/fonts/dejavu/DejaVuSansMono.ttf',
+  },
+];
+
+let cachedFonts = null;
+
+function loadFonts() {
+  if (cachedFonts !== null) return cachedFonts;
+
+  for (const loc of FONT_LOCATIONS) {
+    try {
+      cachedFonts = [
+        { name: 'DejaVu Sans', data: readFileSync(loc.regular), weight: 400, style: 'normal' },
+        { name: 'DejaVu Sans', data: readFileSync(loc.bold), weight: 700, style: 'normal' },
+        { name: 'DejaVu Sans Mono', data: readFileSync(loc.mono), weight: 400, style: 'normal' },
+      ];
+      return cachedFonts;
+    } catch {
+      continue;
+    }
+  }
+
+  cachedFonts = false;
+  return cachedFonts;
+}
 
 function ogTemplate(title, description, isRoot = false) {
   return {
@@ -163,14 +201,14 @@ function parseFrontmatter(content) {
 }
 
 async function renderOgImage(title, description, isRoot = false) {
+  const fonts = loadFonts();
+  if (!fonts) {
+    throw new Error('DejaVu fonts not found on system. Skipping dynamic OG image generation.');
+  }
   const svg = await satori(ogTemplate(title, description, isRoot), {
     width: OG_WIDTH,
     height: OG_HEIGHT,
-    fonts: [
-      { name: 'DejaVu Sans', data: fontRegular, weight: 400, style: 'normal' },
-      { name: 'DejaVu Sans', data: fontBold, weight: 700, style: 'normal' },
-      { name: 'DejaVu Sans Mono', data: fontMono, weight: 400, style: 'normal' },
-    ],
+    fonts,
   });
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
@@ -236,12 +274,16 @@ export function ogImage() {
         try {
           statSync(fallbackPath);
         } catch {
-          const png = await renderOgImage(
-            'agent-wechat',
-            'Programmable WeChat for AI agents.',
-            true
-          );
-          await sharp(png).toFile(fallbackPath);
+          try {
+            const png = await renderOgImage(
+              'agent-wechat',
+              'Programmable WeChat for AI agents.',
+              true
+            );
+            await sharp(png).toFile(fallbackPath);
+          } catch (err) {
+            console.warn(`[og-image] Failed to generate fallback og-image.png:`, err.message);
+          }
         }
 
         console.log(`[og-image] Generated ${generated} images, ${skipped} up to date`);

@@ -251,8 +251,21 @@ chatsCmd
   .option("-l, --limit <number>", "Maximum number of chats", "50")
   .option("-o, --offset <number>", "Skip first N chats", "0")
   .option("-j, --json", "Output as JSON")
+  .option("--direct", "List direct messages only (exclude groups, official accounts, and system accounts)")
+  .option("--group", "List group chats only")
+  .option("--gzh", "List official account messages only (gh_ prefix or brandsessionholder)")
+  .option("--unread", "List chats with unread messages only")
   .action(async (opts) => {
-    await cmdChats(getClient(), parseInt(opts.limit, 10), parseInt(opts.offset, 10), opts.json ?? false);
+    await cmdChats(
+      getClient(),
+      parseInt(opts.limit, 10),
+      parseInt(opts.offset, 10),
+      opts.json ?? false,
+      opts.direct ?? false,
+      opts.group ?? false,
+      opts.gzh ?? false,
+      opts.unread ?? false
+    );
   });
 
 chatsCmd
@@ -537,8 +550,47 @@ async function cmdLogin(
   }
 }
 
-async function cmdChats(client: WeChatClient, limit: number = 50, offset: number = 0, json: boolean = false) {
-  const chats = await client.listChats(limit, offset);
+async function cmdChats(
+  client: WeChatClient,
+  limit: number = 50,
+  offset: number = 0,
+  json: boolean = false,
+  direct: boolean = false,
+  group: boolean = false,
+  gzh: boolean = false,
+  unread: boolean = false
+) {
+  let chats = await client.listChats(limit, offset);
+
+  // Apply filters
+  if (direct) {
+    const SYSTEM_ACCOUNTS = [
+      "brandsessionholder", "weixin", "filehelper", "fmessage", 
+      "qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp", 
+      "medianote", "newsapp"
+    ];
+    chats = chats.filter(c => 
+      !c.isGroup && 
+      !(c.username && c.username.startsWith("gh_")) &&
+      !(c.username && SYSTEM_ACCOUNTS.includes(c.username))
+    );
+  }
+
+  if (group) {
+    chats = chats.filter(c => c.isGroup);
+  }
+
+  if (gzh) {
+    chats = chats.filter(c => 
+      (c.username && c.username.startsWith("gh_")) || 
+      c.username === "brandsessionholder" || 
+      c.username === "newsapp"
+    );
+  }
+
+  if (unread) {
+    chats = chats.filter(c => c.unreadCount > 0);
+  }
 
   if (json) {
     console.log(JSON.stringify(chats, null, 2));

@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Build the Rust server binary
 # ============================================
-FROM rust:1.93-bookworm AS builder
+FROM docker.1ms.run/rust:1.93-bookworm AS builder
 
 ARG BUILD_MODE=release
 
@@ -30,8 +30,8 @@ RUN mkdir -p /output && cp target/${BUILD_MODE}/agent-server /output/agent-serve
 
 # ============================================
 # Stage 2: Final runtime image
+FROM docker.1ms.run/ubuntu:22.04
 # ============================================
-FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 

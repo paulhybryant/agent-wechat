@@ -6,23 +6,25 @@
 
 services:
   agent-wechat:
-    image: ghcr.io/thisnick/agent-wechat:latest
+    image: agent-wechat:amd64
     container_name: agent-wechat
     security_opt:
       - seccomp=unconfined
     cap_add:
       - SYS_PTRACE
       - NET_ADMIN
-    ports:
-      - "6174:6174"
-    volumes:
-      - agent-wechat-data:/data
-      - agent-wechat-home:/home/wechat
-      - ~/.config/agent-wechat/token:/data/auth-token:ro
     environment:
-      - PROXY=${PROXY:-}
+      AGENT_PORT: 80
+    ports:
+      - 6174:80
+    volumes:
+      - ~/.config/agent-wechat/data:/data
+      - ~/.config/agent-wechat/home:/home/wechat
+      - ~/.config/agent-wechat/token:/data/auth-token:ro
     restart: unless-stopped
+    networks:
+      - nginx-proxy-hosts
 
-volumes:
-  agent-wechat-data:
-  agent-wechat-home:
+networks:
+  nginx-proxy-hosts:
+    external: true

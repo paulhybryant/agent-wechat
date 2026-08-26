@@ -97,6 +97,15 @@ impl Plan for ChatOpenPlan {
             match &plan_state.phase {
                 ChatOpenPhase::Opening => {
                     if main_state_id != Some("chat") && main_state_id != Some("chat_open") {
+                        if let Some(weixin_tab) = query_selector(a11y, r#"push-button[name="Weixin"]"#) {
+                            if let Some(bounds) = &weixin_tab.bounds {
+                                tracing::info!("[chat_open] Not in chat view, clicking Weixin tab");
+                                return Some(SelectedAction {
+                                    action: actions::click_bounds(bounds),
+                                    frame: identified.main_window.as_ref().and_then(|m| m.frame.clone()),
+                                });
+                            }
+                        }
                         return None;
                     }
 
